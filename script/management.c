@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../include/management.h"
-#include "management.h"
 
 // Struct definitions
 struct Book {
@@ -35,7 +34,17 @@ void management() {
     getchar(); 
 
     switch(choice) {
-        case 1: // ADD BOOK
+        case 1: // ADD BOOK (write as ID=...;Title=...;Author=...)
+            ;
+            int nextId = 1;
+            file = fopen("books.txt", "r");
+            if (file) {
+                while (fgets(line, sizeof(line), file)) {
+                    if (strlen(line) > 1) nextId++;
+                }
+                fclose(file);
+            }
+
             file = fopen("books.txt", "a");
             if (file == NULL) {
                 printf("Error opening file!\n");
@@ -49,7 +58,7 @@ void management() {
             fgets(b.author, sizeof(b.author), stdin);
             b.author[strcspn(b.author, "\n")] = 0;
 
-            fprintf(file, "Title: %s | Author: %s\n", b.title, b.author);
+            fprintf(file, "ID=%d;Title=%s;Author=%s\n", nextId, b.title, b.author);
             fclose(file);
             printf("Book added successfully!\n");
             break;
@@ -74,7 +83,14 @@ void management() {
 
             found = 0;
             while (fgets(line, sizeof(line), file)) {
-                // Check if the current line contains the book title
+                char bid[32] = "", btitle[200] = "", bauthor[200] = "";
+                if (sscanf(line, "ID=%31[^;];Title=%199[^;];Author=%199[^\\n]", bid, btitle, bauthor) >= 2) {
+                    if (strcmp(btitle, tempSearch) == 0) {
+                        found = 1;
+                        continue; /* skip writing this line */
+                    }
+                }
+                /* fallback: if not parseable, keep previous substring check */
                 if (strstr(line, tempSearch) == NULL) {
                     fputs(line, tempFile);
                 } else {
@@ -109,7 +125,12 @@ void management() {
             fgets(m.id, sizeof(m.id), stdin);
             m.id[strcspn(m.id, "\n")] = 0;
 
-            fprintf(file, "ID: %s | Name: %s\n", m.id, m.name);
+            char contact[100] = "";
+            printf("Enter Member Contact (phone/email): ");
+            fgets(contact, sizeof(contact), stdin);
+            contact[strcspn(contact, "\n")] = 0;
+
+            fprintf(file, "ID=%s;Name=%s;Contact=%s\n", m.id, m.name, contact);
             fclose(file);
             printf("Member added successfully!\n");
             break;
@@ -134,6 +155,13 @@ void management() {
 
             found = 0;
             while (fgets(line, sizeof(line), file)) {
+                char mid[64] = "", mname[200] = "", mcontact[200] = "";
+                if (sscanf(line, "ID=%63[^;];Name=%199[^;];Contact=%199[^\\n]", mid, mname, mcontact) >= 1) {
+                    if (strcmp(mid, tempSearch) == 0) {
+                        found = 1;
+                        continue; /* skip writing this line */
+                    }
+                }
                 if (strstr(line, tempSearch) == NULL) {
                     fputs(line, tempFile);
                 } else {

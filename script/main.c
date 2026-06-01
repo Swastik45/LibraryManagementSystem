@@ -7,10 +7,12 @@
 #include "../include/fine.h"
 #include "../include/display.h"
 
-// Clears the entire terminal window cleanly using standard ANSI escape codes
+#define VERSION "1.0"
+
+/* ── Terminal helpers ──────────────────────────────────────────────── */
+
 void clear_screen() {
-    // \e[1H moves cursor to top left, \e[2J clears the screen
-    printf("\033[1H\033[2J"); 
+    printf("\033[H\033[2J");
     fflush(stdout);
 }
 
@@ -19,115 +21,150 @@ void clean_stdin() {
     while ((c = getchar()) != '\n' && c != EOF);
 }
 
-void press_any_key() {
-    printf("\nPress [Enter] to return to the Main Menu...");
-    getchar(); 
+void press_enter(const char *msg) {
+    if (msg) printf("\n  %s", msg);
+    else     printf("\n  Press [Enter] to return to the menu...");
+    getchar();
 }
 
-int main()
-{
+/* ── Banner & menus ────────────────────────────────────────────────── */
+
+static void print_banner(const char *subtitle) {
+    printf("\n");
+    printf("  ╔══════════════════════════════════════════════════════╗\n");
+    printf("  ║                                                      ║\n");
+    printf("  ║     \033[1m📚  LIBRARY MANAGEMENT SYSTEM\033[0m  v%-6s         ║\n", VERSION);
+    if (subtitle)
+        printf("  ║     \033[2m%-50s\033[0m ║\n", subtitle);
+    printf("  ║                                                      ║\n");
+    printf("  ╚══════════════════════════════════════════════════════╝\n\n");
+}
+
+static void print_login_screen() {
+    clear_screen();
+    print_banner("Administrator Access");
+}
+
+static void print_main_menu(const char *username) {
+    clear_screen();
+    printf("\n");
+    printf("  ╔══════════════════════════════════════════════════════╗\n");
+    printf("  ║  \033[1m📚  LIBRARY MANAGEMENT SYSTEM\033[0m");
+    printf("  \033[2mLogged in: %-8s\033[0m ║\n", username);
+    printf("  ╚══════════════════════════════════════════════════════╝\n\n");
+
+    printf("  ┌──────────────────────────────────────────────────────┐\n");
+    printf("  │  \033[36m1\033[0m  \033[1mManagement\033[0m          \033[2mBooks & Members\033[0m               │\n");
+    printf("  │  \033[36m2\033[0m  \033[1mIssue & Return\033[0m       \033[2mLoan operations\033[0m               │\n");
+    printf("  │  \033[36m3\033[0m  \033[1mSearch\033[0m               \033[2mFind books or members\033[0m         │\n");
+    printf("  │  \033[36m4\033[0m  \033[1mFines & Charges\033[0m      \033[2mOverdue penalties\033[0m             │\n");
+    printf("  │  \033[36m5\033[0m  \033[1mDisplay Records\033[0m      \033[2mFull system status\033[0m            │\n");
+    printf("  │                                                      │\n");
+    printf("  │  \033[33m6\033[0m  \033[1mLogout\033[0m                                              │\n");
+    printf("  │  \033[31m0\033[0m  \033[1mExit\033[0m                                                │\n");
+    printf("  └──────────────────────────────────────────────────────┘\n\n");
+
+    printf("  Choice:  ");
+}
+
+/* ── Feedback helpers ──────────────────────────────────────────────── */
+
+static void print_success(const char *msg) {
+    printf("\n  \033[32m╔══════════════════════════════════════════════════════╗\033[0m\n");
+    printf(    "  \033[32m║  ✔  %-50s ║\033[0m\n", msg);
+    printf(    "  \033[32m╚══════════════════════════════════════════════════════╝\033[0m\n");
+}
+
+static void print_error(const char *msg) {
+    printf("\n  \033[31m╔══════════════════════════════════════════════════════╗\033[0m\n");
+    printf(    "  \033[31m║  ✖  %-50s ║\033[0m\n", msg);
+    printf(    "  \033[31m╚══════════════════════════════════════════════════════╝\033[0m\n");
+}
+
+/* ── Main ──────────────────────────────────────────────────────────── */
+
+int main() {
     char username[50], password[50];
     int choice;
     int system_running = 1;
 
-    while (system_running)
-    {
-        clear_screen(); // Clear terminal before showing Login
-        printf("=======================================\n");
-        printf("      LIBRARY MANAGEMENT SYSTEM        \n");
-        printf("=======================================\n");
-        printf("\n--- LOGIN SCREEN (Enter 0 as Username to Exit) ---\n");
-        printf("Enter Username: ");
-        if (scanf("%49s", username) != 1) {
-            clean_stdin();
-            continue;
-        }
+    while (system_running) {
+        print_login_screen();
+
+        printf("  Enter username \033[2m(or 0 to quit)\033[0m:  ");
+        if (scanf("%49s", username) != 1) { clean_stdin(); continue; }
+        clean_stdin();
 
         if (strcmp(username, "0") == 0) {
             clear_screen();
-            printf("\nExiting System. Goodbye!\n");
+            printf("\n  Goodbye!\n\n");
             break;
         }
 
-        printf("Enter Password: ");
-        scanf("%49s", password);
-        clean_stdin(); 
+        printf("  Enter password:                  ");
+        if (scanf("%49s", password) != 1) { clean_stdin(); continue; }
+        clean_stdin();
 
-        if (strcmp(username, "admin") == 0 && strcmp(password, "password123") == 0)
-        {
-            printf("\n[Success] Access Granted! Welcome, Admin.\n");
-            
-            int logged_in = 1;
-            while (logged_in)
-            {
-                clear_screen(); // Clear terminal before showing the Main Menu layout
-                printf("====================================\n");
-                printf("             MAIN MENU              \n");
-                printf("====================================\n");
-                printf("1. Management (Books & Members)\n");
-                printf("2. Issue & Return Operations\n");
-                printf("3. Search System\n");
-                printf("4. Fine & Charges\n");
-                printf("5. Display All Records & Status\n");
-                printf("6. Logout\n");
-                printf("0. Exit Entire Application\n");
-                printf("------------------------------------\n");
-                printf("Enter choice: ");
-                
-                if (scanf("%d", &choice) != 1) {
-                    printf("\nInvalid input! Please enter a number.\n");
-                    clean_stdin();
-                    press_any_key();
-                    continue;
-                }
-                clean_stdin(); 
-
-                // Clear screen right before showing the output of the chosen function
-                if (choice >= 1 && choice <= 5) {
-                    clear_screen(); 
-                }
-
-                switch (choice)
-                {
-                    case 1:
-                        management();
-                        press_any_key(); 
-                        break;
-                    case 2:
-                        issuereturn();
-                        press_any_key(); 
-                        break;
-                    case 3:
-                        search();
-                        press_any_key(); 
-                        break;
-                    case 4:
-                        fine();
-                        press_any_key(); 
-                        break;
-                    case 5:
-                        display();
-                        press_any_key(); 
-                        break;
-                    case 6:
-                        printf("\nLogging out...\n");
-                        logged_in = 0; 
-                        break;
-                    case 0:
-                        printf("\nShutting down system safely...\n");
-                        logged_in = 0;
-                        system_running = 0; 
-                        break;
-                    default:
-                        printf("\n[Error] Invalid choice! Select between 0 and 6.\n");
-                        press_any_key(); 
-                }
-            }
+        /* ── Authentication ────────────────────────────────────────── */
+        if (strcmp(username, "admin") != 0 || strcmp(password, "password123") != 0) {
+            print_error("Access denied. Incorrect username or password.");
+            press_enter("Press [Enter] to try again...");
+            continue;
         }
-        else
-        {
-            printf("\n[Access Denied] Incorrect username or password.\n");
-            press_any_key(); // Pause so they can read the error before login screen wipes
+
+        print_success("Access granted. Welcome, Admin.");
+
+        /* ── Session loop ──────────────────────────────────────────── */
+        int logged_in = 1;
+        while (logged_in) {
+            print_main_menu(username);
+
+            if (scanf("%d", &choice) != 1) {
+                clean_stdin();
+                print_error("Invalid input — please enter a number between 0 and 6.");
+                press_enter(NULL);
+                continue;
+            }
+            clean_stdin();
+
+            if (choice >= 1 && choice <= 5) clear_screen();
+
+            switch (choice) {
+                case 1:
+                    management();
+                    press_enter(NULL);
+                    break;
+                case 2:
+                    issuereturn();
+                    press_enter(NULL);
+                    break;
+                case 3:
+                    search();
+                    press_enter(NULL);
+                    break;
+                case 4:
+                    fine();
+                    press_enter(NULL);
+                    break;
+                case 5:
+                    display();
+                    press_enter(NULL);
+                    break;
+                case 6:
+                    clear_screen();
+                    printf("\n  Logging out...\n\n");
+                    logged_in = 0;
+                    break;
+                case 0:
+                    clear_screen();
+                    printf("\n  Shutting down safely. Goodbye!\n\n");
+                    logged_in = 0;
+                    system_running = 0;
+                    break;
+                default:
+                    print_error("Invalid choice — select a number between 0 and 6.");
+                    press_enter(NULL);
+            }
         }
     }
 

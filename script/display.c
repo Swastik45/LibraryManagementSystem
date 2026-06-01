@@ -4,94 +4,163 @@
 #include <time.h>
 #include "../include/display.h"
 
-void display()
-{
-    char line[512];
+/* Safe truncating copy — copies at most (dst_size - 1) bytes and null-terminates */
+static void strtrunc(char *dst, const char *src, size_t dst_size) {
+    strncpy(dst, src, dst_size - 1);
+    dst[dst_size - 1] = '\0';
+}
 
-    // --- 1. Books Catalog ---
-    printf("\n======================================================\n");
-    printf("                    BOOKS CATALOG                     \n");
-    printf("======================================================\n");
-    
+/* Prints a horizontal rule with corner/junction chars at each column boundary */
+static void hline(const char *left, const char *mid, const char *right,
+                  const int *widths, int ncols) {
+    printf("%s", left);
+    for (int c = 0; c < ncols; c++) {
+        for (int i = 0; i < widths[c] + 2; i++) printf("─");
+        printf("%s", c < ncols - 1 ? mid : right);
+    }
+    printf("\n");
+}
+
+/* Prints a formatted table row, padding each cell to its column width */
+static void row(const char **cells, const int *widths, int ncols) {
+    printf("│");
+    for (int c = 0; c < ncols; c++)
+        printf(" %-*s │", widths[c], cells[c]);
+    printf("\n");
+}
+
+void display() {
+
+    /* ── 1. BOOKS CATALOG ─────────────────────────────────────────── */
+    printf("\n");
+    printf("╔══════════════════════════════════════════════════════════╗\n");
+    printf("║           LIBRARY RECORDS — FULL SYSTEM STATUS           ║\n");
+    printf("╚══════════════════════════════════════════════════════════╝\n");
+
+    printf("\n  BOOKS CATALOG\n");
+
+    int bw[] = {4, 30, 22};
+    hline("┌", "┬", "┐", bw, 3);
+    const char *bhead[] = {"ID", "Title", "Author"};
+    row(bhead, bw, 3);
+    hline("├", "┼", "┤", bw, 3);
+
     FILE *fb = fopen("books.txt", "r");
+    int book_count = 0;
+    char line[512];
     if (fb) {
         while (fgets(line, sizeof(line), fb)) {
-            // Removes trailing newline if present
-            line[strcspn(line, "\n")] = 0; 
-            
-            // Assuming your file has "Title: ... | Author: ..."
-            // We print it with a slight indentation for readability
-            if (strlen(line) > 0) {
-                printf("  %s\n", line);
+            line[strcspn(line, "\n")] = 0;
+            if (strlen(line) == 0) continue;
+
+            char id[8] = "", title[32] = "", author[24] = "";
+            if (sscanf(line, "ID=%7[^;];Title=%31[^;];Author=%23[^\n]",
+                       id, title, author) == 3) {
+                const char *cells[] = {id, title, author};
+                row(cells, bw, 3);
+            } else {
+                char truncated[31];
+                strtrunc(truncated, line, sizeof(truncated));
+                const char *cells[] = {"—", truncated, ""};
+                row(cells, bw, 3);
             }
+            book_count++;
         }
         fclose(fb);
-    } else {
-        printf("  No books catalog found.\n");
     }
+    if (book_count == 0) {
+        const char *cells[] = {"", "(no books found)", ""};
+        row(cells, bw, 3);
+    }
+    hline("└", "┴", "┘", bw, 3);
 
-    // --- 2. Members ---
-    printf("\n======================================================\n");
-    printf("                       MEMBERS                        \n");
-    printf("======================================================\n");
-    
+    /* ── 2. MEMBERS ───────────────────────────────────────────────── */
+    printf("\n  MEMBERS\n");
+
+    int mw[] = {5, 28, 24};
+    hline("┌", "┬", "┐", mw, 3);
+    const char *mhead[] = {"ID", "Name", "Contact"};
+    row(mhead, mw, 3);
+    hline("├", "┼", "┤", mw, 3);
+
     FILE *fm = fopen("members.txt", "r");
+    int member_count = 0;
     if (fm) {
         while (fgets(line, sizeof(line), fm)) {
             line[strcspn(line, "\n")] = 0;
-            if (strlen(line) > 0) {
-                printf("  %s\n", line);
+            if (strlen(line) == 0) continue;
+
+            char id[8] = "", name[30] = "", contact[26] = "";
+            if (sscanf(line, "ID=%7[^;];Name=%29[^;];Contact=%25[^\n]",
+                       id, name, contact) == 3) {
+                const char *cells[] = {id, name, contact};
+                row(cells, mw, 3);
+            } else {
+                char truncated[29];
+                strtrunc(truncated, line, sizeof(truncated));
+                const char *cells[] = {"—", truncated, ""};
+                row(cells, mw, 3);
             }
+            member_count++;
         }
         fclose(fm);
-    } else {
-        printf("  No members record found.\n");
     }
+    if (member_count == 0) {
+        const char *cells[] = {"", "(no members found)", ""};
+        row(cells, mw, 3);
+    }
+    hline("└", "┴", "┘", mw, 3);
 
-    // --- 3. Issued Records (Parsed and Formatted as a Table) ---
-    printf("\n====================================================================================\n");
-    printf("                                   ISSUED RECORDS                                   \n");
-    printf("====================================================================================\n");
-    // %-25s means left-align with 25 spaces width
-    printf("  %-25s %-12s %-20s\n", "Book Title", "Member ID", "Issued Date/Time");
-    printf("  ----------------------------------------------------------------------------------\n");
+    /* ── 3. ISSUED RECORDS ────────────────────────────────────────── */
+    printf("\n  ISSUED RECORDS\n");
+
+    int iw[] = {27, 8, 20};
+    hline("┌", "┬", "┐", iw, 3);
+    const char *ihead[] = {"Book Title", "Member", "Issued Date/Time"};
+    row(ihead, iw, 3);
+    hline("├", "┼", "┤", iw, 3);
 
     FILE *fi = fopen("issued.txt", "r");
+    int loan_count = 0;
     if (fi) {
         while (fgets(line, sizeof(line), fi)) {
             line[strcspn(line, "\n")] = 0;
             if (strlen(line) == 0) continue;
 
-            // Variables to hold parsed data
-            char title[100] = "";
-            char id[50] = "";
+            char title[100] = "", id[50] = "";
             long int timestamp = 0;
-
-            // Parsing: Title=The Alchimest;ID=1;Time=1780033928
-            // sscanf searches for the keys and extracts the values dynamically
-            if (sscanf(line, "Title=%[^;];ID=%[^;];Time=%ld", title, id, &timestamp) == 3) {
-                
-                // Convert UNIX timestamp to a readable local date/time string
+            if (sscanf(line, "Title=%99[^;];ID=%49[^;];Time=%ld",
+                       title, id, &timestamp) == 3) {
                 time_t rawtime = (time_t)timestamp;
                 struct tm *timeinfo = localtime(&rawtime);
-                char time_buffer[26];
-                
-                if (timeinfo != NULL) {
-                    strftime(time_buffer, sizeof(time_buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
-                } else {
-                    strcpy(time_buffer, "Invalid Time");
-                }
+                char time_buf[22];
+                if (timeinfo)
+                    strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", timeinfo);
+                else
+                    strcpy(time_buf, "Invalid time");
 
-                // Print perfectly aligned columns
-                printf("  %-25s %-12s %-20s\n", title, id, time_buffer);
+                char short_title[28];
+                strtrunc(short_title, title, sizeof(short_title));
+
+                const char *cells[] = {short_title, id, time_buf};
+                row(cells, iw, 3);
             } else {
-                // Fallback in case a line doesn't match the format string
-                printf("  Raw Record: %s\n", line);
+                char truncated[28];
+                strtrunc(truncated, line, sizeof(truncated));
+                const char *cells[] = {truncated, "", ""};
+                row(cells, iw, 3);
             }
+            loan_count++;
         }
         fclose(fi);
-    } else {
-        printf("  No issued records found.\n");
     }
-    printf("====================================================================================\n\n");
+    if (loan_count == 0) {
+        const char *cells[] = {"(no issued records)", "", ""};
+        row(cells, iw, 3);
+    }
+    hline("└", "┴", "┘", iw, 3);
+
+    /* ── Summary footer ───────────────────────────────────────────── */
+    printf("\n  %d active loan(s)  ·  %d book(s)  ·  %d member(s)\n\n",
+           loan_count, book_count, member_count);
 }
