@@ -12,8 +12,12 @@
 /* ── Terminal helpers ──────────────────────────────────────────────── */
 
 void clear_screen() {
-    printf("\033[H\033[2J");
-    fflush(stdout);
+    // Standard system-independent screen clear or fallback spacing
+    #ifdef _WIN32
+        system("cls");
+    #else
+        system("clear");
+    #endif
 }
 
 void clean_stdin() {
@@ -22,22 +26,22 @@ void clean_stdin() {
 }
 
 void press_enter(const char *msg) {
-    if (msg) printf("\n  %s", msg);
-    else     printf("\n  Press [Enter] to return to the menu...");
+    if (msg) {
+        printf("\n  %s", msg);
+    } else {
+        printf("\n  Press [Enter] to return to the menu...");
+    }
     getchar();
 }
 
 /* ── Banner & menus ────────────────────────────────────────────────── */
 
 static void print_banner(const char *subtitle) {
-    printf("\n");
-    printf("  ╔══════════════════════════════════════════════════════╗\n");
-    printf("  ║                                                      ║\n");
-    printf("  ║     \033[1m📚  LIBRARY MANAGEMENT SYSTEM\033[0m  v%-6s         ║\n", VERSION);
-    if (subtitle)
-        printf("  ║     \033[2m%-50s\033[0m ║\n", subtitle);
-    printf("  ║                                                      ║\n");
-    printf("  ╚══════════════════════════════════════════════════════╝\n\n");
+    printf("\n--- LIBRARY MANAGEMENT SYSTEM v%s ---\n", VERSION);
+    if (subtitle) {
+        printf("  %s\n", subtitle);
+    }
+    printf("---------------------------------------\n\n");
 }
 
 static void print_login_screen() {
@@ -47,38 +51,30 @@ static void print_login_screen() {
 
 static void print_main_menu(const char *username) {
     clear_screen();
-    printf("\n");
-    printf("  ╔══════════════════════════════════════════════════════╗\n");
-    printf("  ║  \033[1m📚  LIBRARY MANAGEMENT SYSTEM\033[0m");
-    printf("  \033[2mLogged in: %-8s\033[0m ║\n", username);
-    printf("  ╚══════════════════════════════════════════════════════╝\n\n");
+    printf("\n--- LIBRARY MANAGEMENT SYSTEM ---\n");
+    printf("  Logged in: %s\n", username);
+    printf("---------------------------------\n\n");
 
-    printf("  ┌──────────────────────────────────────────────────────┐\n");
-    printf("  │  \033[36m1\033[0m  \033[1mManagement\033[0m          \033[2mBooks & Members\033[0m               │\n");
-    printf("  │  \033[36m2\033[0m  \033[1mIssue & Return\033[0m       \033[2mLoan operations\033[0m               │\n");
-    printf("  │  \033[36m3\033[0m  \033[1mSearch\033[0m               \033[2mFind books or members\033[0m         │\n");
-    printf("  │  \033[36m4\033[0m  \033[1mFines & Charges\033[0m      \033[2mOverdue penalties\033[0m             │\n");
-    printf("  │  \033[36m5\033[0m  \033[1mDisplay Records\033[0m      \033[2mFull system status\033[0m            │\n");
-    printf("  │                                                      │\n");
-    printf("  │  \033[33m6\033[0m  \033[1mLogout\033[0m                                              │\n");
-    printf("  │  \033[31m0\033[0m  \033[1mExit\033[0m                                                │\n");
-    printf("  └──────────────────────────────────────────────────────┘\n\n");
+    printf("  1. Management (Books & Members)\n");
+    printf("  2. Issue & Return (Loan operations)\n");
+    printf("  3. Search (Find books or members)\n");
+    printf("  4. Fines & Charges (Overdue penalties)\n");
+    printf("  5. Display Records (Full system status)\n\n");
+    printf("  6. Logout\n");
+    printf("  0. Exit\n");
+    printf("---------------------------------\n\n");
 
-    printf("  Choice:  ");
+    printf("  Choice: ");
 }
 
 /* ── Feedback helpers ──────────────────────────────────────────────── */
 
 static void print_success(const char *msg) {
-    printf("\n  \033[32m╔══════════════════════════════════════════════════════╗\033[0m\n");
-    printf(    "  \033[32m║  ✔  %-50s ║\033[0m\n", msg);
-    printf(    "  \033[32m╚══════════════════════════════════════════════════════╝\033[0m\n");
+    printf("\n  SUCCESS: %s\n", msg);
 }
 
 static void print_error(const char *msg) {
-    printf("\n  \033[31m╔══════════════════════════════════════════════════════╗\033[0m\n");
-    printf(    "  \033[31m║  ✖  %-50s ║\033[0m\n", msg);
-    printf(    "  \033[31m╚══════════════════════════════════════════════════════╝\033[0m\n");
+    printf("\n  ERROR: %s\n", msg);
 }
 
 /* ── Main ──────────────────────────────────────────────────────────── */
@@ -91,7 +87,7 @@ int main() {
     while (system_running) {
         print_login_screen();
 
-        printf("  Enter username \033[2m(or 0 to quit)\033[0m:  ");
+        printf("  Enter username (or 0 to quit): ");
         if (scanf("%49s", username) != 1) { clean_stdin(); continue; }
         clean_stdin();
 
@@ -101,7 +97,7 @@ int main() {
             break;
         }
 
-        printf("  Enter password:                  ");
+        printf("  Enter password: ");
         if (scanf("%49s", password) != 1) { clean_stdin(); continue; }
         clean_stdin();
 
@@ -127,7 +123,9 @@ int main() {
             }
             clean_stdin();
 
-            if (choice >= 1 && choice <= 5) clear_screen();
+            if (choice >= 1 && choice <= 5) {
+                clear_screen();
+            }
 
             switch (choice) {
                 case 1:
