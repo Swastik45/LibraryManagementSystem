@@ -1,0 +1,50 @@
+# Compiled executables
+library_management_system
+*.o
+*.so
+*.a
+*.exe
+
+# Binary data files (generated at runtime)
+*.dat
+*.bin
+
+# Temporary files
+temp_*.dat
+temp_*.bin
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Debug files
+*.dSYM/
+*.su
+*.gch
+*.pch
+
+# Build artifacts
+build/
+dist/
+*.out
+
+# Vim files
+.*.sw[op]
+
+# Emacs files
+*#
+.#*

@@ -3,6 +3,7 @@
 #include<string.h>
 #include<time.h>
 #include "../include/issuereturn.h"
+#include "../include/structs.h"
 
 void issue_book();
 void return_book();
@@ -11,11 +12,11 @@ void issuereturn()
 {
     int choice;
 
-    printf("\n1. Issue Book\n");
+    printf("\n--- Issue & Return Menu ---\n");
+    printf("1. Issue Book\n");
     printf("2. Return Book\n");
-
     printf("Enter choice: ");
-    scanf("%d",&choice);
+    scanf("%d", &choice);
 
     switch(choice)
     {
@@ -34,10 +35,9 @@ void issuereturn()
 
 void issue_book()
 {
-    char title[200];
-    char memberId[50];
+    char title[100];
+    char memberId[20];
     FILE *fbooks, *fmembers, *fissued;
-    char line[512];
     int bookFound = 0, memberFound = 0;
 
     getchar();
@@ -49,10 +49,12 @@ void issue_book()
     fgets(memberId, sizeof(memberId), stdin);
     memberId[strcspn(memberId, "\n")] = 0;
 
-    fbooks = fopen("books.txt", "r");
+    /* Check if book exists */
+    fbooks = fopen("books.dat", "rb");
     if (fbooks) {
-        while (fgets(line, sizeof(line), fbooks)) {
-            if (strstr(line, title) != NULL) {
+        Book rb;
+        while (fread(&rb, sizeof(Book), 1, fbooks) == 1) {
+            if (strstr(rb.title, title) != NULL) {
                 bookFound = 1;
                 break;
             }
@@ -60,10 +62,12 @@ void issue_book()
         fclose(fbooks);
     }
 
-    fmembers = fopen("members.txt", "r");
+    /* Check if member exists */
+    fmembers = fopen("members.dat", "rb");
     if (fmembers) {
-        while (fgets(line, sizeof(line), fmembers)) {
-            if (strstr(line, memberId) != NULL) {
+        Member rm;
+        while (fread(&rm, sizeof(Member), 1, fmembers) == 1) {
+            if (strcmp(rm.id, memberId) == 0 || strstr(rm.name, memberId) != NULL) {
                 memberFound = 1;
                 break;
             }
@@ -80,15 +84,21 @@ void issue_book()
         return;
     }
 
-    fissued = fopen("issued.txt", "a");
+    /* Write to issued.dat */
+    fissued = fopen("issued.dat", "ab");
     if (!fissued) {
         printf("Unable to open issued records.\n");
         return;
     }
 
-    long now = (long)time(NULL);
-    // store as key=value pairs for simple parsing
-    fprintf(fissued, "Title=%s;ID=%s;Time=%ld\n", title, memberId, now);
+    IssuedRecord rec;
+    strncpy(rec.title, title, sizeof(rec.title) - 1);
+    rec.title[sizeof(rec.title) - 1] = 0;
+    strncpy(rec.member_id, memberId, sizeof(rec.member_id) - 1);
+    rec.member_id[sizeof(rec.member_id) - 1] = 0;
+    rec.issue_time = time(NULL);
+
+    fwrite(&rec, sizeof(IssuedRecord), 1, fissued);
     fclose(fissued);
 
     printf("Book '%s' issued to member '%s'.\n", title, memberId);
@@ -97,12 +107,11 @@ void issue_book()
 
 void return_book()
 {
-    char title[200];
-    char memberId[50];
+    char title[100];
+    char memberId[20];
     FILE *fissued, *temp;
-    char line[512];
     int found = 0;
-    long issueTime = 0;
+    time_t issueTime = 0;
 
     getchar();
     printf("Enter Book Title to Return: ");
@@ -113,58 +122,53 @@ void return_book()
     fgets(memberId, sizeof(memberId), stdin);
     memberId[strcspn(memberId, "\n")] = 0;
 
-    fissued = fopen("issued.txt", "r");
+    fissued = fopen("issued.dat", "rb");
     if (!fissued) {
         printf("No issued records found.\n");
         return;
     }
 
-    temp = fopen("temp_issued.txt", "w");
+    temp = fopen("temp_issued.dat", "wb");
     if (!temp) {
         fclose(fissued);
         printf("Unable to create temporary file.\n");
         return;
     }
 
-    while (fgets(line, sizeof(line), fissued)) {
-        int matchTitle = (strstr(line, "Title=") && strstr(line, title));
-        int matchId = (strstr(line, "ID=") && strstr(line, memberId));
-
-        if (matchTitle && matchId) {
-            // extract Time=
-            char *p = strstr(line, "Time=");
-            if (p) {
-                issueTime = atol(p + 5);
-            }
+    IssuedRecord rec;
+    while (fread(&rec, sizeof(IssuedRecord), 1, fissued) == 1) {
+        if (strcmp(rec.title, title) == 0 && strcmp(rec.member_id, memberId) == 0) {
+            issueTime = rec.issue_time;
             found = 1;
-            // skip writing this line so it gets removed (book returned)
-        } else {
-            fputs(line, temp);
+            continue; /* skip - book is being returned */
         }
+        fwrite(&rec, sizeof(IssuedRecord), 1, temp);
     }
 
     fclose(fissued);
     fclose(temp);
 
     if (found) {
-        remove("issued.txt");
-        rename("temp_issued.txt", "issued.txt");
+        remove("issued.dat");
+        rename("temp_issued.dat", "issued.dat");
 
-        long now = (long)time(NULL);
+        time_t now = time(NULL);
         long days = (now - issueTime) / 86400;
         long overdue = 0;
         long fine = 0;
+
         if (days > 14) {
             overdue = days - 14;
-            fine = overdue * 5; // 5 currency units per day
+            fine = overdue * 5; /* 5 units per day */
         }
 
-        if (fine > 0)
+        if (fine > 0) {
             printf("Book returned. Overdue by %ld days. Fine: %ld\n", overdue, fine);
-        else
+        } else {
             printf("Book returned on time. No fine.\n");
+        }
     } else {
-        remove("temp_issued.txt");
+        remove("temp_issued.dat");
         printf("Matching issued record not found.\n");
     }
 }

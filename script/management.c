@@ -2,26 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../include/management.h"
+#include "../include/structs.h"
 
-// Struct definitions
-struct Book {
-    char title[100];
-    char author[100];
-};
-
-struct Member {
-    char name[100];
-    char id[20];
-};
-
-// Function declaration
 void management() {
     int choice;
-    FILE *file, *tempFile;
-    struct Book b;
-    struct Member m;
+    FILE *tempFile;
+    Book b;
+    Member m;
     char tempSearch[100];
-    char line[250];
     int found = 0;
 
     printf("\n--- Management System Menu ---\n");
@@ -34,150 +22,126 @@ void management() {
     getchar(); 
 
     switch(choice) {
-        case 1: // ADD BOOK (write as ID=...;Title=...;Author=...)
-            ;
-            int nextId = 1;
-            file = fopen("books.txt", "r");
-            if (file) {
-                while (fgets(line, sizeof(line), file)) {
-                    if (strlen(line) > 1) nextId++;
+        case 1: // ADD BOOK (binary)
+            {
+                int nextId = 1;
+                FILE *fb = fopen("books.dat", "rb");
+                if (fb) {
+                    fseek(fb, 0, SEEK_END);
+                    long sz = ftell(fb);
+                    if (sz > 0) nextId = (int)(sz / sizeof(Book)) + 1;
+                    fclose(fb);
                 }
-                fclose(file);
+
+                FILE *out = fopen("books.dat", "ab");
+                if (!out) {
+                    printf("Error opening books.dat for writing!\n");
+                    break;
+                }
+
+                memset(&b, 0, sizeof(Book));
+                b.id = nextId;
+
+                printf("Enter Book Title: ");
+                fgets(b.title, sizeof(b.title), stdin);
+                b.title[strcspn(b.title, "\n")] = 0;
+
+                printf("Enter Book Author: ");
+                fgets(b.author, sizeof(b.author), stdin);
+                b.author[strcspn(b.author, "\n")] = 0;
+
+                fwrite(&b, sizeof(b), 1, out);
+                fclose(out);
+                printf("Book added successfully! (ID=%d)\n", b.id);
             }
-
-            file = fopen("books.txt", "a");
-            if (file == NULL) {
-                printf("Error opening file!\n");
-                return;
-            }
-            printf("Enter Book Title: ");
-            fgets(b.title, sizeof(b.title), stdin);
-            b.title[strcspn(b.title, "\n")] = 0; // Remove trailing newline
-
-            printf("Enter Book Author: ");
-            fgets(b.author, sizeof(b.author), stdin);
-            b.author[strcspn(b.author, "\n")] = 0;
-
-            fprintf(file, "ID=%d;Title=%s;Author=%s\n", nextId, b.title, b.author);
-            fclose(file);
-            printf("Book added successfully!\n");
             break;
 
-        case 2: // REMOVE BOOK
-            file = fopen("books.txt", "r");
-            if (file == NULL) {
-                printf("No books record found.\n");
-                return;
-            }
+        case 2: // REMOVE BOOK (binary)
+            {
+                FILE *fb = fopen("books.dat", "rb");
+                if (!fb) { printf("No books record found.\n"); break; }
+                printf("Enter Book Title to Remove: ");
+                fgets(tempSearch, sizeof(tempSearch), stdin);
+                tempSearch[strcspn(tempSearch, "\n")] = 0;
 
-            printf("Enter Book Title to Remove: ");
-            fgets(tempSearch, sizeof(tempSearch), stdin);
-            tempSearch[strcspn(tempSearch, "\n")] = 0; 
+                tempFile = fopen("temp_books.dat", "wb");
+                if (!tempFile) { fclose(fb); printf("Error creating temporary file!\n"); break; }
 
-            tempFile = fopen("temp.txt", "w");
-            if (tempFile == NULL) {
-                printf("Error creating temporary file!\n");
-                fclose(file);
-                return;
-            }
-
-            found = 0;
-            while (fgets(line, sizeof(line), file)) {
-                char bid[32] = "", btitle[200] = "", bauthor[200] = "";
-                if (sscanf(line, "ID=%31[^;];Title=%199[^;];Author=%199[^\\n]", bid, btitle, bauthor) >= 2) {
-                    if (strcmp(btitle, tempSearch) == 0) {
-                        found = 1;
-                        continue; /* skip writing this line */
-                    }
+                found = 0;
+                Book rb;
+                while (fread(&rb, sizeof(rb), 1, fb) == 1) {
+                    if (strcmp(rb.title, tempSearch) == 0) { found = 1; continue; }
+                    fwrite(&rb, sizeof(rb), 1, tempFile);
                 }
-                /* fallback: if not parseable, keep previous substring check */
-                if (strstr(line, tempSearch) == NULL) {
-                    fputs(line, tempFile);
+
+                fclose(fb);
+                fclose(tempFile);
+
+                if (found) {
+                    remove("books.dat");
+                    rename("temp_books.dat", "books.dat");
+                    printf("Book '%s' removed successfully!\n", tempSearch);
                 } else {
-                    found = 1;
+                    remove("temp_books.dat");
+                    printf("Book not found.\n");
                 }
-            }
-            fclose(file);
-            fclose(tempFile);
-
-            // Replace the old file with the updated temporary file
-            if (found) {
-                remove("books.txt");
-                rename("temp.txt", "books.txt");
-                printf("Book '%s' removed successfully!\n", tempSearch);
-            } else {
-                remove("temp.txt"); // Clean up temp file if nothing changed
-                printf("Book not found.\n");
             }
             break;
 
-        case 3: // ADD MEMBER
-            file = fopen("members.txt", "a");
-            if (file == NULL) {
-                printf("Error opening file!\n");
-                return;
+        case 3: // ADD MEMBER (binary)
+            {
+                FILE *fm = fopen("members.dat", "ab");
+                if (!fm) { printf("Error opening members.dat for writing!\n"); break; }
+                printf("Enter Member Name: ");
+                fgets(m.name, sizeof(m.name), stdin);
+                m.name[strcspn(m.name, "\n")] = 0;
+
+                printf("Enter Member ID: ");
+                fgets(m.id, sizeof(m.id), stdin);
+                m.id[strcspn(m.id, "\n")] = 0;
+
+                char contact[100] = "";
+                printf("Enter Member Contact (phone/email): ");
+                fgets(contact, sizeof(contact), stdin);
+                contact[strcspn(contact, "\n")] = 0;
+
+                strncpy(m.contact, contact, sizeof(m.contact));
+                fwrite(&m, sizeof(m), 1, fm);
+                fclose(fm);
+                printf("Member added successfully!\n");
             }
-            printf("Enter Member Name: ");
-            fgets(m.name, sizeof(m.name), stdin);
-            m.name[strcspn(m.name, "\n")] = 0;
-
-            printf("Enter Member ID: ");
-            fgets(m.id, sizeof(m.id), stdin);
-            m.id[strcspn(m.id, "\n")] = 0;
-
-            char contact[100] = "";
-            printf("Enter Member Contact (phone/email): ");
-            fgets(contact, sizeof(contact), stdin);
-            contact[strcspn(contact, "\n")] = 0;
-
-            fprintf(file, "ID=%s;Name=%s;Contact=%s\n", m.id, m.name, contact);
-            fclose(file);
-            printf("Member added successfully!\n");
             break;
 
-        case 4: // REMOVE MEMBER
-            file = fopen("members.txt", "r");
-            if (file == NULL) {
-                printf("No members record found.\n");
-                return;
-            }
+        case 4: // REMOVE MEMBER (binary)
+            {
+                FILE *fm = fopen("members.dat", "rb");
+                if (!fm) { printf("No members record found.\n"); break; }
 
-            printf("Enter Member ID to Remove: ");
-            fgets(tempSearch, sizeof(tempSearch), stdin);
-            tempSearch[strcspn(tempSearch, "\n")] = 0;
+                printf("Enter Member ID to Remove: ");
+                fgets(tempSearch, sizeof(tempSearch), stdin);
+                tempSearch[strcspn(tempSearch, "\n")] = 0;
 
-            tempFile = fopen("temp.txt", "w");
-            if (tempFile == NULL) {
-                printf("Error creating temporary file!\n");
-                fclose(file);
-                return;
-            }
+                tempFile = fopen("temp_members.dat", "wb");
+                if (!tempFile) { fclose(fm); printf("Error creating temporary file!\n"); break; }
 
-            found = 0;
-            while (fgets(line, sizeof(line), file)) {
-                char mid[64] = "", mname[200] = "", mcontact[200] = "";
-                if (sscanf(line, "ID=%63[^;];Name=%199[^;];Contact=%199[^\\n]", mid, mname, mcontact) >= 1) {
-                    if (strcmp(mid, tempSearch) == 0) {
-                        found = 1;
-                        continue; /* skip writing this line */
-                    }
+                found = 0;
+                Member rm;
+                while (fread(&rm, sizeof(rm), 1, fm) == 1) {
+                    if (strcmp(rm.id, tempSearch) == 0) { found = 1; continue; }
+                    fwrite(&rm, sizeof(rm), 1, tempFile);
                 }
-                if (strstr(line, tempSearch) == NULL) {
-                    fputs(line, tempFile);
+
+                fclose(fm);
+                fclose(tempFile);
+
+                if (found) {
+                    remove("members.dat");
+                    rename("temp_members.dat", "members.dat");
+                    printf("Member with ID '%s' removed successfully!\n", tempSearch);
                 } else {
-                    found = 1;
+                    remove("temp_members.dat");
+                    printf("Member ID not found.\n");
                 }
-            }
-            fclose(file);
-            fclose(tempFile);
-
-            if (found) {
-                remove("members.txt");
-                rename("temp.txt", "members.txt");
-                printf("Member with ID '%s' removed successfully!\n", tempSearch);
-            } else {
-                remove("temp.txt");
-                printf("Member ID not found.\n");
             }
             break;
 
