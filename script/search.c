@@ -5,6 +5,15 @@
 #include "../include/search.h"
 #include "../include/structs.h"
 
+/* ── ANSI Dynamic Color Scheme ────────────────────────────────────── */
+#define CLR_RESET   "\x1b[0m"
+#define CLR_MUTED   "\x1b[90m"   // Dark Gray Borders/Brackets
+#define CLR_TITLE   "\x1b[1;36m" // Bold Cyan Subheadings
+#define CLR_ACCENT  "\x1b[1;33m" // Bold Yellow Highlights
+#define CLR_DATA    "\x1b[37m"   // Soft White text
+#define CLR_SUCCESS "\x1b[1;32m" // Green Messages
+#define CLR_ERROR   "\x1b[1;31m" // Red Messages
+
 /* Convert string to lowercase for case-insensitive comparison */
 void to_lowercase(char *str) {
     for (int i = 0; str[i]; i++) {
@@ -24,99 +33,104 @@ int case_insensitive_search(const char *haystack, const char *needle) {
     return strstr(hay, ndl) != NULL;
 }
 
-void search()
-{
+void search() {
     int choice;
     char query[200];
 
-    printf("\n--- SEARCH MENU ---\n");
-    printf("1. Search Book by Title or Author\n");
-    printf("2. Search Member by Name or ID\n");
-    printf("Enter choice: ");
-    scanf("%d", &choice);
-    
-    // Clear the leftover 'Enter' key from scanf
-    getchar(); 
+    // Submenu Header Layout
+    printf("\n%s┌───────────────────────────────────────────────────────────────────┐%s\n", CLR_MUTED, CLR_RESET);
+    printf("%s│                       🔍 CENTRAL SEARCH ENGINE                     │%s\n", CLR_TITLE, CLR_RESET);
+    printf("%s├───────────────────────────────────────────────────────────────────┤%s\n", CLR_MUTED, CLR_RESET);
+    printf("  %s[%s1%s]%s Query Book Catalog %s─────────%s %s[%s2%s]%s Query Membership Registry\n", CLR_MUTED, CLR_ACCENT, CLR_MUTED, CLR_DATA, CLR_MUTED, CLR_RESET, CLR_MUTED, CLR_ACCENT, CLR_MUTED, CLR_DATA);
+    printf("%s└───────────────────────────────────────────────────────────────────┘%s\n\n", CLR_MUTED, CLR_RESET);
+
+    printf("  %s⚡ Select Target Index >> %s", CLR_TITLE, CLR_RESET);
+    if (scanf("%d", &choice) != 1) {
+        while (getchar() != '\n');
+        printf("\n  %s✘ ERROR:%s Invalid input format.%s\n", CLR_ERROR, CLR_RESET, CLR_RESET);
+        return;
+    }
+    getchar(); // Clear trailing newline
 
     if (choice == 1) {
         FILE *f = fopen("books.dat", "rb");
         if (f == NULL) {
-            printf("Error: Cannot open books.dat\n");
+            printf("\n  %s✘ SYSTEM FAULT:%s Unable to read books dataset matrix.%s\n", CLR_ERROR, CLR_RESET, CLR_RESET);
             return;
         }
 
-        printf("Enter search term (case-insensitive): ");
+        printf("\n  %s🔍 Enter Catalog Search Term (Case-Insensitive): %s", CLR_TITLE, CLR_DATA);
         fgets(query, sizeof(query), stdin);
         query[strcspn(query, "\n")] = '\0';
 
         if (strlen(query) == 0) {
-            printf("Search term cannot be empty!\n");
+            printf("\n  %s⚠ ABORTED:%s Search token constraint cannot be empty.%s\n", CLR_ACCENT, CLR_RESET, CLR_RESET);
             fclose(f);
             return;
         }
 
-        printf("\n+----+-------------------------------------+------------------------------+\n");
-        printf("| ID | %-35s | %-28s |\n", "Title", "Author");
-        printf("+----+-------------------------------------+------------------------------+\n");
+        printf("\n%s┌────┬─────────────────────────────────────┬──────────────────────────────┐%s\n", CLR_MUTED, CLR_RESET);
+        printf("%s│ %-2s │ %-35s │ %-28s │%s\n", CLR_MUTED, "ID", "Book Title", "Author", CLR_RESET);
+        printf("%s├────┼─────────────────────────────────────┼──────────────────────────────┤%s\n", CLR_MUTED, CLR_RESET);
 
         Book b;
         int found = 0;
         while (fread(&b, sizeof(Book), 1, f)) {
-            // Search in both title and author (case-insensitive)
             if (case_insensitive_search(b.title, query) || case_insensitive_search(b.author, query)) {
-                printf("| %2d | %-35.35s | %-28.28s |\n", b.id, b.title, b.author);
+                printf("%s│ %s%2d%s │ %s%-35.35s%s │ %s%-28.28s%s │%s\n", 
+                       CLR_MUTED, CLR_ACCENT, b.id, CLR_MUTED, CLR_DATA, b.title, CLR_MUTED, CLR_DATA, b.author, CLR_MUTED, CLR_RESET);
                 found++;
             }
         }
-        printf("+----+-------------------------------------+------------------------------+\n");
+        printf("%s└────┴─────────────────────────────────────┴──────────────────────────────┘%s\n", CLR_MUTED, CLR_RESET);
         
         if (found == 0) {
-            printf("No books found matching '%s'\n", query);
+            printf("  %s⚠ No registered items matched the parameter '%s'%s\n", CLR_ACCENT, query, CLR_RESET);
         } else {
-            printf("Found %d book(s) matching '%s'\n", found, query);
+            printf("  %s✔ Lookup complete. Found %d matched entry segment(s).%s\n", CLR_SUCCESS, found, CLR_RESET);
         }
         fclose(f);
 
     } else if (choice == 2) {
         FILE *f = fopen("members.dat", "rb");
         if (f == NULL) {
-            printf("Error: Cannot open members.dat\n");
+            printf("\n  %s✘ SYSTEM FAULT:%s Unable to read member database structure.%s\n", CLR_ERROR, CLR_RESET, CLR_RESET);
             return;
         }
 
-        printf("Enter search term (case-insensitive): ");
+        printf("\n  %s🔍 Enter Member Search Term (Case-Insensitive): %s", CLR_TITLE, CLR_DATA);
         fgets(query, sizeof(query), stdin);
         query[strcspn(query, "\n")] = '\0';
 
         if (strlen(query) == 0) {
-            printf("Search term cannot be empty!\n");
+            printf("\n  %s⚠ ABORTED:%s Search token constraint cannot be empty.%s\n", CLR_ACCENT, CLR_RESET, CLR_RESET);
             fclose(f);
             return;
         }
 
-        printf("\n+----------+------------------------------+----------------------+\n");
-        printf("| %-8s | %-28s | %-20s |\n", "Member ID", "Name", "Contact");
-        printf("+----------+------------------------------+----------------------+\n");
+        printf("\n%s┌──────────┬──────────────────────────────┬──────────────────────┐%s\n", CLR_MUTED, CLR_RESET);
+        printf("%s│ %-8s │ %-28s │ %-20s │%s\n", CLR_MUTED, "Card ID", "Name", "Contact Details", CLR_RESET);
+        printf("%s├──────────┼──────────────────────────────┼──────────────────────┤%s\n", CLR_MUTED, CLR_RESET);
 
         Member m;
         int found = 0;
         while (fread(&m, sizeof(Member), 1, f)) {
-            // Search in name and id (case-insensitive)
             if (case_insensitive_search(m.name, query) || case_insensitive_search(m.id, query)) {
-                printf("| %-8.8s | %-28.28s | %-20.20s |\n", m.id, m.name, m.contact);
+                printf("%s│ %s%-8.8s%s │ %s%-28.28s%s │ %s%-20.20s%s │%s\n", 
+                       CLR_MUTED, CLR_ACCENT, m.id, CLR_MUTED, CLR_DATA, m.name, CLR_MUTED, CLR_DATA, m.contact, CLR_MUTED, CLR_RESET);
                 found++;
             }
         }
-        printf("+----------+------------------------------+----------------------+\n");
+        printf("%s└──────────┴──────────────────────────────┴──────────────────────┘%s\n", CLR_MUTED, CLR_RESET);
         
         if (found == 0) {
-            printf("No members found matching '%s'\n", query);
+            printf("  %s⚠ No operator profiles matched the parameter '%s'%s\n", CLR_ACCENT, query, CLR_RESET);
         } else {
-            printf("Found %d member(s) matching '%s'\n", found, query);
+            printf("  %s✔ Lookup complete. Found %d matched profile segment(s).%s\n", CLR_SUCCESS, found, CLR_RESET);
         }
         fclose(f);
 
     } else {
-        printf("Invalid choice!\n");
+        printf("\n  %s✘ SELECTION OUT OF BOUNDS:%s Input value mapped outside option limits.%s\n", CLR_ERROR, CLR_RESET, CLR_RESET);
     }
 }
